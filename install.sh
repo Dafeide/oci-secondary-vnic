@@ -1,44 +1,24 @@
+curl -sSL https://raw.githubusercontent.com/oracle/terraform-examples/master/examples/oci/connect_vcns_using_multiple_vnics/scripts/secondary_vnic_all_configure.sh -o /tmp/vnic_test.sh && \
+sudo mkdir -p /usr/local/bin/oci-scripts && \
+cat <<EOF | sudo tee /usr/local/bin/oci-scripts/setup_vnic.sh > /dev/null
 #!/bin/bash
-set -e
-
-echo "[+] Installing OCI Secondary VNIC auto-run service..."
-
-# 创建执行脚本
-cat >/usr/local/bin/secondary-vnic.sh <<'EOF'
-#!/bin/bash
-set -e
-
-URL="https://raw.githubusercontent.com/oracle/terraform-examples/master/examples/oci/connect_vcns_using_multiple_vnics/scripts/secondary_vnic_all_configure.sh"
-DIR="/root/secondary_vnic"
-
-mkdir -p "$DIR"
-cd "$DIR"
-
-wget -qO secondary_vnic_all_configure.sh "$URL"
-chmod +x secondary_vnic_all_configure.sh
-bash secondary_vnic_all_configure.sh -c
+# 自动下载并执行 Oracle 官方 VNIC 配置脚本
+wget -qO /tmp/secondary_vnic_all_configure.sh https://raw.githubusercontent.com/oracle/terraform-examples/master/examples/oci/connect_vcns_using_multiple_vnics/scripts/secondary_vnic_all_configure.sh
+bash /tmp/secondary_vnic_all_configure.sh -c
 EOF
-
-chmod +x /usr/local/bin/secondary-vnic.sh
-
-# 创建 systemd 服务
-cat >/etc/systemd/system/secondary-vnic.service <<'EOF'
+sudo chmod +x /usr/local/bin/oci-scripts/setup_vnic.sh && \
+cat <<EOF | sudo tee /etc/systemd/system/oci-vnic-config.service > /dev/null
 [Unit]
-Description=Configure Oracle Secondary VNIC on Boot
+Description=Configure OCI Secondary VNICs
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/secondary-vnic.sh
+ExecStart=/usr/local/bin/oci-scripts/setup_vnic.sh
 RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
 EOF
-
-systemctl daemon-reexec
-systemctl daemon-reload
-systemctl enable secondary-vnic.service
-
-echo "[✓] Done. Secondary VNIC will be configured on every boot."
+sudo systemctl daemon-reload && sudo systemctl enable oci-vnic-config.service && sudo systemctl start oci-vnic-config.service && echo "--- 配置完成！辅助网卡已激活，且下次重启会自动运行 ---"
