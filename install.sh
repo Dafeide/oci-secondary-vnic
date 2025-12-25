@@ -3,6 +3,7 @@ set -e
 
 echo "[+] Installing OCI Secondary VNIC auto-run service..."
 
+# 创建执行脚本
 cat >/usr/local/bin/secondary-vnic.sh <<'EOF'
 #!/bin/bash
 set -e
@@ -20,6 +21,7 @@ EOF
 
 chmod +x /usr/local/bin/secondary-vnic.sh
 
+# 创建 systemd 服务
 cat >/etc/systemd/system/secondary-vnic.service <<'EOF'
 [Unit]
 Description=Configure Oracle Secondary VNIC on Boot
@@ -39,5 +41,4 @@ systemctl daemon-reexec
 systemctl daemon-reload
 systemctl enable secondary-vnic.service
 
-echo "[✓] Done.
-Secondary VNIC will be configured on every boot."
+echo "[✓] Done. Secondary VNIC will be configured on every boot."
