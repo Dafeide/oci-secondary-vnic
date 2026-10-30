@@ -20,7 +20,7 @@ set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-VER="2.1.1"
+VER="2.1.2"
 CONF_DIR="/etc/node-guard"
 CONF="$CONF_DIR/config"
 PORTS_FILE="$CONF_DIR/ports.list"
@@ -452,6 +452,7 @@ node-guard v$VER
   unbanall          解封全部
   status            查看规则与命中计数
   test              测试 BT 规则是否生效
+  migrate           清理旧的手工规则（会先列出并确认）
   apply             按配置重建规则（开机服务使用）
   install           安装为系统命令并开机自启
   uninstall         卸载
@@ -533,6 +534,7 @@ case "${1:-menu}" in
   unbanall)  unban_all ;;
   status)    show_status ;;
   test)      test_bt ;;
+  migrate)   migrate_legacy ;;
   apply)     apply ;;
   install)   install_self ;;
   uninstall) uninstall_all ;;
