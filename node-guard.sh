@@ -6,6 +6,7 @@
 # 依赖     : iptables（可选 ip6tables）、内核 xt_string / xt_multiport 模块
 # 用法     : bash node-guard.sh              进入菜单
 #            bash node-guard.sh banall       封禁 BT(标准) + SPAM
+#            bash node-guard.sh banall strict  封禁 BT(严格) + SPAM
 #            bash node-guard.sh help         查看全部命令
 #
 # 设计:
@@ -19,7 +20,7 @@ set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-VER="2.0.0"
+VER="2.1.0"
 CONF_DIR="/etc/node-guard"
 CONF="$CONF_DIR/config"
 PORTS_FILE="$CONF_DIR/ports.list"
@@ -367,7 +368,12 @@ ban_bt() {
 unban_bt()   { set_bt off;  info "已解封 BT/PT"; }
 ban_spam()   { set_spam on; info "已封禁 SPAM 端口（$SMTP_PORTS | $POP3_PORTS | $IMAP_PORTS | $OTHER_PORTS）"; }
 unban_spam() { set_spam off; info "已解封 SPAM 端口"; }
-ban_all()    { load_conf; BT_MODE="${BT_MODE/off/standard}"; SPAM="on"; save_conf; apply; info "已封禁 BT/PT（$BT_MODE）+ SPAM 端口"; }
+ban_all() {
+  local mode="${1:-standard}"
+  case "$mode" in standard|strict) ;; *) err "模式只能是 standard 或 strict"; return 1 ;; esac
+  load_conf; BT_MODE="$mode"; SPAM="on"; save_conf; apply
+  info "已封禁 BT/PT（$mode）+ SPAM 端口"
+}
 unban_all() {
   load_conf; BT_MODE="off"; SPAM="off"; BASE="off"; save_conf
   : >"$PORTS_FILE" 2>/dev/null; : >"$WORDS_FILE" 2>/dev/null
@@ -441,7 +447,7 @@ node-guard v$VER
   unbanbt           解封 BT/PT
   banspam           封禁 SPAM 邮件端口
   unbanspam         解封 SPAM 邮件端口
-  banall            封禁 BT(标准) + SPAM
+  banall [standard|strict]  封禁 BT + SPAM（默认 standard）
   unbanall          解封全部
   status            查看规则与命中计数
   test              测试 BT 规则是否生效
@@ -460,21 +466,22 @@ show_menu() {
   ${G}2.${N} 封禁 BT/PT（严格：追加 magnet/torrent/迅雷等，误杀较多）
   ${G}3.${N} 封禁 SPAM 邮件端口
   ${G}4.${N} 一键封禁 BT(标准) + SPAM
-  ${G}5.${N} 封禁 自定义端口
-  ${G}6.${N} 封禁 自定义关键词
+  ${G}5.${N} 一键封禁 BT(严格) + SPAM
+  ${G}6.${N} 封禁 自定义端口
+  ${G}7.${N} 封禁 自定义关键词
  ──────────────────────────────────────────
-  ${G}7.${N} 解封 BT/PT
-  ${G}8.${N} 解封 SPAM
-  ${G}9.${N} 解封 自定义端口
- ${G}10.${N} 解封 自定义关键词
- ${G}11.${N} 解封 全部
+  ${G}8.${N} 解封 BT/PT
+  ${G}9.${N} 解封 SPAM
+ ${G}10.${N} 解封 自定义端口
+ ${G}11.${N} 解封 自定义关键词
+ ${G}12.${N} 解封 全部
  ──────────────────────────────────────────
- ${G}12.${N} 开启/关闭 基础入站防护（TCP 异常标志位 + 入站 25 端口）
- ${G}13.${N} 查看规则与命中计数
- ${G}14.${N} 测试 BT 规则是否生效
- ${G}15.${N} 清理旧的手工规则（迁移到本脚本管理）
- ${G}16.${N} 安装为系统命令 + 开机自启
- ${G}17.${N} 卸载
+ ${G}13.${N} 开启/关闭 基础入站防护（TCP 异常标志位 + 入站 25 端口）
+ ${G}14.${N} 查看规则与命中计数
+ ${G}15.${N} 测试 BT 规则是否生效
+ ${G}16.${N} 清理旧的手工规则（迁移到本脚本管理）
+ ${G}17.${N} 安装为系统命令 + 开机自启
+ ${G}18.${N} 卸载
   ${G}0.${N} 退出
 EOF
 }
@@ -483,28 +490,29 @@ menu() {
   local num ans
   while true; do
     show_menu
-    read -r -p " 请输入数字 [0-17]: " num
+    read -r -p " 请输入数字 [0-18]: " num
     case "$num" in
       1)  ban_bt standard ;;
       2)  ban_bt strict ;;
       3)  ban_spam ;;
-      4)  ban_all ;;
-      5)  add_custom_ports ;;
-      6)  add_custom_words ;;
-      7)  unban_bt ;;
-      8)  unban_spam ;;
-      9)  del_custom_ports ;;
-      10) del_custom_words ;;
-      11) read -r -p "确认解封全部（含自定义端口/关键词）？[y/N]: " ans
-          [ "$ans" = "y" ] || [ "$ans" = "Y" ] && unban_all ;;
-      12) toggle_base ;;
-      13) show_status ;;
-      14) test_bt ;;
-      15) migrate_legacy ;;
-      16) install_self ;;
-      17) uninstall_all ;;
+      4)  ban_all standard ;;
+      5)  ban_all strict ;;
+      6)  add_custom_ports ;;
+      7)  add_custom_words ;;
+      8)  unban_bt ;;
+      9)  unban_spam ;;
+      10) del_custom_ports ;;
+      11) del_custom_words ;;
+      12) read -r -p "确认解封全部（含自定义端口/关键词）？[y/N]: " ans
+          if [ "$ans" = "y" ] || [ "$ans" = "Y" ]; then unban_all; fi ;;
+      13) toggle_base ;;
+      14) show_status ;;
+      15) test_bt ;;
+      16) migrate_legacy ;;
+      17) install_self ;;
+      18) uninstall_all ;;
       0)  exit 0 ;;
-      *)  warn "请输入 0-17 之间的数字" ;;
+      *)  warn "请输入 0-18 之间的数字" ;;
     esac
     echo
     read -r -p "回车返回菜单..." _
@@ -520,7 +528,7 @@ case "${1:-menu}" in
   unbanbt)   unban_bt ;;
   banspam)   ban_spam ;;
   unbanspam) unban_spam ;;
-  banall)    ban_all ;;
+  banall)    ban_all "${2:-standard}" ;;
   unbanall)  unban_all ;;
   status)    show_status ;;
   test)      test_bt ;;
