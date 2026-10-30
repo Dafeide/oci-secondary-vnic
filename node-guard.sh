@@ -20,7 +20,7 @@ set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-VER="2.1.2"
+VER="2.1.3"
 CONF_DIR="/etc/node-guard"
 CONF="$CONF_DIR/config"
 PORTS_FILE="$CONF_DIR/ports.list"
@@ -265,7 +265,7 @@ test_bt() {
 # 迁移旧的手工规则
 #---------------------------------------------------------------------
 migrate_legacy() {
-  local ipt chain rule ans
+  local ipt chain rule ans assume_yes="${1:-}"
   local -a cands=()
   for ipt in "${IPTS[@]}"; do
     for chain in OUTPUT INPUT; do
@@ -284,8 +284,12 @@ migrate_legacy() {
   fi
   echo "将要删除以下 ${#cands[@]} 条旧规则（只涉及 OUTPUT/INPUT 顶层的 string / multiport / 25 端口规则）:"
   printf '  %s\n' "${cands[@]}"
-  read -r -p "确认删除？删除后请先确保已封禁 BT/SPAM 再继续 [y/N]: " ans
-  [ "$ans" = "y" ] || [ "$ans" = "Y" ] || { echo "已取消"; return 0; }
+  if [ "$assume_yes" = "-y" ] || [ "$assume_yes" = "--yes" ]; then
+    echo "已指定 -y，跳过确认"
+  else
+    read -r -p "确认删除？删除后请先确保已封禁 BT/SPAM 再继续 [y/N]: " ans
+    [ "$ans" = "y" ] || [ "$ans" = "Y" ] || { echo "已取消"; return 0; }
+  fi
   local item n=0
   for item in "${cands[@]}"; do
     ipt=${item%%|*}; rule=${item#*|}
@@ -452,7 +456,7 @@ node-guard v$VER
   unbanall          解封全部
   status            查看规则与命中计数
   test              测试 BT 规则是否生效
-  migrate           清理旧的手工规则（会先列出并确认）
+  migrate [-y]      清理旧的手工规则（默认先列出并确认，-y 跳过确认）
   apply             按配置重建规则（开机服务使用）
   install           安装为系统命令并开机自启
   uninstall         卸载
@@ -534,7 +538,7 @@ case "${1:-menu}" in
   unbanall)  unban_all ;;
   status)    show_status ;;
   test)      test_bt ;;
-  migrate)   migrate_legacy ;;
+  migrate)   migrate_legacy "${2:-}" ;;
   apply)     apply ;;
   install)   install_self ;;
   uninstall) uninstall_all ;;
