@@ -20,13 +20,14 @@ set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-VER="2.1.3"
+VER="2.1.4"
 CONF_DIR="/etc/node-guard"
 CONF="$CONF_DIR/config"
 PORTS_FILE="$CONF_DIR/ports.list"
 WORDS_FILE="$CONF_DIR/keywords.list"
 BIN="/usr/local/sbin/node-guard"
 UNIT="/etc/systemd/system/node-guard.service"
+LEGACY_HOOK="/etc/network/if-pre-up.d/iptables"
 
 C_BT="NG_BT"
 C_SPAM="NG_SPAM"
@@ -264,6 +265,31 @@ test_bt() {
 #---------------------------------------------------------------------
 # 迁移旧的手工规则
 #---------------------------------------------------------------------
+# 旧脚本（doub.io 等）会写一个 if-pre-up.d 钩子，每次网卡启动都用 iptables-restore 覆盖规则，
+# 导致重启后旧规则又冒出来。只有当钩子和规则文件里全是旧脚本的内容时才移除，并先备份。
+disable_legacy_hook() { # $1 = -y 跳过确认
+  [ -f "$LEGACY_HOOK" ] || return 0
+  local f ans bk="/root/node-guard-backup"
+  if grep -v -E '^(#.*|)$' "$LEGACY_HOOK" \
+     | grep -v -E '^/sbin/ip6?tables-restore < /etc/ip6?tables\.(up|test)\.rules$' | grep -q .; then
+    warn "$LEGACY_HOOK 含有其它内容，未处理，请手动检查"; return 0
+  fi
+  for f in /etc/iptables.up.rules /etc/ip6tables.up.rules; do
+    [ -f "$f" ] || continue
+    if grep -E '^-A ' "$f" | grep -v -E 'multiport|--dport 25 |--tcp-flags|-[io] lo |-m string' | grep -q .; then
+      warn "$f 里含有自定义规则，未移除旧的开机恢复脚本，请手动检查"; return 0
+    fi
+  done
+  if [ "${1:-}" != "-y" ] && [ "${1:-}" != "--yes" ]; then
+    read -r -p "发现旧的开机恢复脚本 $LEGACY_HOOK（重启会把旧规则恢复出来），备份后移除？[y/N]: " ans
+    [ "$ans" = "y" ] || [ "$ans" = "Y" ] || { echo "已跳过"; return 0; }
+  fi
+  mkdir -p "$bk"
+  cp -a "$LEGACY_HOOK" /etc/iptables.up.rules /etc/ip6tables.up.rules /etc/iptables.test.rules "$bk"/ 2>/dev/null
+  rm -f "$LEGACY_HOOK"
+  info "已备份到 $bk，并移除旧的开机恢复脚本"
+}
+
 migrate_legacy() {
   local ipt chain rule ans assume_yes="${1:-}"
   local -a cands=()
@@ -280,6 +306,7 @@ migrate_legacy() {
   done
   if [ "${#cands[@]}" -eq 0 ]; then
     info "没有发现旧的手工规则"
+    disable_legacy_hook "$assume_yes"
     return 0
   fi
   echo "将要删除以下 ${#cands[@]} 条旧规则（只涉及 OUTPUT/INPUT 顶层的 string / multiport / 25 端口规则）:"
@@ -296,6 +323,7 @@ migrate_legacy() {
     eval "$ipt ${rule/#-A/-D}" 2>/dev/null && n=$((n + 1))
   done
   info "已删除 $n 条旧规则"
+  disable_legacy_hook "$assume_yes"
 }
 
 #---------------------------------------------------------------------
