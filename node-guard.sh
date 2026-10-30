@@ -20,7 +20,7 @@ set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-VER="2.1.0"
+VER="2.1.1"
 CONF_DIR="/etc/node-guard"
 CONF="$CONF_DIR/config"
 PORTS_FILE="$CONF_DIR/ports.list"
@@ -315,8 +315,9 @@ install_self() {
   cat >"$UNIT" <<EOF
 [Unit]
 Description=node-guard firewall rules (BT/SPAM block)
-After=network-pre.target docker.service
-Wants=network-pre.target
+# 必须排在网络启动之后：部分模板会在 ifup 时执行 iptables-restore 覆盖 IPv4 规则
+After=network-pre.target networking.service network-online.target docker.service
+Wants=network-online.target
 
 [Service]
 Type=oneshot
