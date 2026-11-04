@@ -1,0 +1,56 @@
+quic:
+  initStreamReceiveWindow: 8388608
+  maxStreamReceiveWindow: 8388608
+  initConnReceiveWindow: 20971520
+  maxConnReceiveWindow: 20971520
+  maxIdleTimeout: 30s
+  maxIncomingStreams: 1024
+  disablePathMTUDiscovery: false
+ignoreClientBandwidth: false
+disableUDP: false
+udpIdleTimeout: 60s
+resolver:
+  type: system
+acl: 
+  inline: 
+    - direct(geosite:apple)
+    - direct(geosite:google)
+    - direct(geosite:microsoft)  
+    - direct(geosite:pikpak)
+    - direct(i.hmoe.link)
+    - reject(10.0.0.0/8)
+    - reject(172.16.0.0/12)
+    - reject(192.168.0.0/16)
+    - reject(127.0.0.0/8)
+    - reject(fc00::/7)
+    - reject(all, tcp/25) #acl规则自行查阅hysteria2文档    
+    - reject(pincong.rocks) #acl规则自行查阅hysteria2文档
+    - reject(geoip:cn) #acl规则自行查阅hysteria2文档
+    - reject(geoip:ir) #acl规则自行查阅hysteria2文档
+    - reject(geosite:china-list)
+    - reject(geosite:epochmediagroup) #acl规则自行查阅hysteria2文档
+    - reject(geosite:falungong) #acl规则自行查阅hysteria2文档
+    - reject(geosite:category-pt) #acl规则自行查阅hysteria2文档
+    - reject(geosite:category-public-tracker) #acl规则自行查阅hysteria2文档
+    - reject(geosite:category-bank-cn) #acl规则自行查阅hysteria2文档
+    - reject(geosite:ucloud)
+    - reject(geosite:trackernetwork)
+    - reject(geosite:rarbg)
+    - reject(geosite:piratebay)
+    - reject(geosite:1337x)
+    - reject(geosite:nyaa)
+    - reject(geosite:rutracker)
+    - reject(geosite:btdig)
+    - reject(geosite:bttzyw)
+    - reject(geosite:xunlei)
+    - reject(*rarbg*)
+    - reject(*piratebay*)
+    - reject(*1337x*)
+    - reject(*rutracker*)
+    - reject(all, tcp/6881-10000)
+    - reject(all, udp/6881-10000)
+masquerade:
+  type: proxy
+  proxy:
+    url: https://www.apple.com 
+    rewriteHost: true
