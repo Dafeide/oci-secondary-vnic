@@ -20,7 +20,7 @@ set -u
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export PATH
 
-VER="2.2.0"
+VER="2.1.4"
 CONF_DIR="/etc/node-guard"
 CONF="$CONF_DIR/config"
 PORTS_FILE="$CONF_DIR/ports.list"
@@ -92,7 +92,6 @@ fi
 BT_MODE="off"    # off | standard | strict
 SPAM="off"       # on | off
 BASE="off"       # on | off
-SCAN_LIMIT="512" # 字符串匹配只扫描每个包的前 N 字节，0 = 扫描整个包（更慢）
 
 # shellcheck disable=SC1090
 load_conf() { [ -f "$CONF" ] && . "$CONF"; return 0; }
@@ -102,7 +101,6 @@ save_conf() {
 BT_MODE="$BT_MODE"
 SPAM="$SPAM"
 BASE="$BASE"
-SCAN_LIMIT="$SCAN_LIMIT"
 EOF
 }
 
@@ -151,13 +149,10 @@ block_ports() { # ipt chain ports
 
 block_words() { # ipt chain word...
   local ipt=$1 chain=$2 w
-  local -a rng=()
   shift 2
-  # BT 握手 / DHT / tracker 请求的特征都在连接开头，只扫前 N 字节可大幅降低 CPU 开销
-  if [ "${SCAN_LIMIT:-0}" -gt 0 ] 2>/dev/null; then rng=(--from 0 --to "$SCAN_LIMIT"); fi
   for w in "$@"; do
     [ -n "$w" ] || continue
-    if ! "$ipt" -A "$chain" -m string --string "$w" --algo bm ${rng[@]+"${rng[@]}"} -j DROP 2>/dev/null; then
+    if ! "$ipt" -A "$chain" -m string --string "$w" --algo bm -j DROP 2>/dev/null; then
       warn "$ipt: 添加关键词规则失败: \"$w\"（内核可能缺少 xt_string 模块，OpenVZ/LXC 上常见）"
       return 1
     fi
@@ -225,7 +220,6 @@ show_status() {
   echo " BT/PT 封禁 : $BT_MODE"
   echo " SPAM 端口  : $SPAM"
   echo " 基础入站防护: $BASE"
-  echo " 扫描范围   : $([ "${SCAN_LIMIT:-0}" -gt 0 ] && echo "每包前 ${SCAN_LIMIT} 字节" || echo "整个包")"
   echo " IPv6 支持  : $([ "${#IPTS[@]}" -gt 1 ] && echo 是 || echo 否)"
   if command -v systemctl >/dev/null 2>&1; then
     echo " 开机自启   : $(systemctl is-enabled node-guard.service 2>/dev/null || echo 未安装)"
@@ -476,19 +470,6 @@ del_custom_words() {
 #---------------------------------------------------------------------
 # 菜单
 #---------------------------------------------------------------------
-set_scanlimit() {
-  load_conf
-  if [ -z "${1:-}" ]; then
-    echo "当前扫描范围: $([ "$SCAN_LIMIT" -gt 0 ] && echo "每包前 $SCAN_LIMIT 字节" || echo "整个包")"
-    return 0
-  fi
-  if ! [[ "$1" =~ ^[0-9]+$ ]] || [ "$1" -gt 65535 ]; then
-    err "请输入 0-65535 的整数（0 = 扫描整个包）"; return 1
-  fi
-  SCAN_LIMIT="$1"; save_conf; apply
-  info "扫描范围已设为：$([ "$SCAN_LIMIT" -gt 0 ] && echo "每包前 $SCAN_LIMIT 字节" || echo "整个包")，规则已重建"
-}
-
 usage() {
   cat <<EOF
 node-guard v$VER
@@ -503,7 +484,6 @@ node-guard v$VER
   unbanall          解封全部
   status            查看规则与命中计数
   test              测试 BT 规则是否生效
-  scanlimit [N]     查看/设置字符串匹配的扫描范围（字节，默认 512，0 = 整个包）
   migrate [-y]      清理旧的手工规则（默认先列出并确认，-y 跳过确认）
   apply             按配置重建规则（开机服务使用）
   install           安装为系统命令并开机自启
@@ -586,7 +566,6 @@ case "${1:-menu}" in
   unbanall)  unban_all ;;
   status)    show_status ;;
   test)      test_bt ;;
-  scanlimit) set_scanlimit "${2:-}" ;;
   migrate)   migrate_legacy "${2:-}" ;;
   apply)     apply ;;
   install)   install_self ;;
