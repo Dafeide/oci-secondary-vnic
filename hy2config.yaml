@@ -47,8 +47,12 @@ acl:
     - reject(*piratebay*)
     - reject(*1337x*)
     - reject(*rutracker*)
-    - reject(all, tcp/6881-10000)
-    - reject(all, udp/6881-10000)
+    - reject(all, tcp/4000-8079)
+    - reject(all, udp/4000-8079)
+    - reject(all, tcp/8444-8999)
+    - reject(all, udp/8444-8999)
+    - reject(all, tcp/9001-12000)
+    - reject(all, udp/9001-12000)
 masquerade:
   type: proxy
   proxy:
