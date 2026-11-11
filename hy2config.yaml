@@ -23,11 +23,20 @@ acl:
     - reject(192.168.0.0/16)
     - reject(127.0.0.0/8)
     - reject(fc00::/7)
-    - reject(all, tcp/25) #acl规则自行查阅hysteria2文档    
+    - reject(all, */23)
+    - reject(all, */24)
+    - reject(all, */25) #acl规则自行查阅hysteria2文档
+    - reject(all, */107)
+    - reject(all, */194)
+    - reject(all, */445)
+    - reject(all, */465)
+    - reject(all, */587)
+    - reject(all, */992)
+    - reject(all, */3389)
     - reject(pincong.rocks) #acl规则自行查阅hysteria2文档
     - reject(geoip:cn) #acl规则自行查阅hysteria2文档
     - reject(geoip:ir) #acl规则自行查阅hysteria2文档
-    - reject(geosite:china-list)
+    - reject(geosite:cn)
     - reject(geosite:epochmediagroup) #acl规则自行查阅hysteria2文档
     - reject(geosite:falungong) #acl规则自行查阅hysteria2文档
     - reject(geosite:category-pt) #acl规则自行查阅hysteria2文档
@@ -47,10 +56,10 @@ acl:
     - reject(*piratebay*)
     - reject(*1337x*)
     - reject(*rutracker*)
-    - reject(all, tcp/4000-7999)
-    - reject(all, udp/4000-7999)
-    - reject(all, tcp/9091-12000)
-    - reject(all, udp/9091-12000)
+    - reject(all, tcp/5231-7999)
+    - reject(all, udp/5231-7999)
+    - reject(all, tcp/9091-10000)
+    - reject(all, udp/9091-10000)
 masquerade:
   type: proxy
   proxy:
