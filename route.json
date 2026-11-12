@@ -11,6 +11,35 @@
     {
       "type": "field",
       "outboundTag": "block",
+      "ip": [
+        "127.0.0.1/32",
+        "10.0.0.0/8",
+        "fc00::/7",
+        "fe80::/10",
+        "172.16.0.0/12"
+      ]
+    },
+    {
+      "type": "field",
+      "outboundTag": "block",
+      "protocol": [
+        "bittorrent"
+      ]
+    },
+    {
+      "type": "field",
+      "outboundTag": "IPv4_out",
+      "domain": [
+        "geosite:apple",
+        "geosite:google",
+        "geosite:microsoft",
+        "geosite:pikpak",
+        "full:i.hmoe.link"
+      ]
+    },
+    {
+      "type": "field",
+      "outboundTag": "block",
       "domain": [
         "regexp:(api|ps|sv|offnavi|newvector|ulog.imap|newloc)(.map|).(baidu|n.shifen).com",
         "regexp:(.+.|^)(360|so).(cn|com)",
@@ -34,24 +63,6 @@
         "regexp:(.*.||)(taobao).(com)",
         "regexp:(.*.||)(laomoe|jiyou|ssss|lolicp|vv1234|0z|4321q|868123|ksweb|mm126).(com|cloud|fun|cn|gs|xyz|cc)",
         "regexp:(flows|miaoko).(pages).(dev)"
-      ]
-    },
-    {
-      "type": "field",
-      "outboundTag": "block",
-      "ip": [
-        "127.0.0.1/32",
-        "10.0.0.0/8",
-        "fc00::/7",
-        "fe80::/10",
-        "172.16.0.0/12"
-      ]
-    },
-    {
-      "type": "field",
-      "outboundTag": "block",
-      "protocol": [
-        "bittorrent"
       ]
     },
     {
